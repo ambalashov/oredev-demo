@@ -15,14 +15,14 @@ import ratpack.error.ClientErrorHandler;
 import ratpack.func.Action;
 import ratpack.handling.Chain;
 import ratpack.spring.annotation.EnableRatpack;
-import reactor.core.Environment;
+import reactor.Environment;
+import reactor.fn.tuple.Tuple;
 import reactor.rx.Streams;
-import reactor.rx.stream.HotStream;
-import reactor.tuple.Tuple;
+import reactor.rx.stream.Broadcaster;
 
 import static ratpack.jackson.Jackson.fromJson;
 import static ratpack.websocket.WebSockets.websocketBroadcast;
-import static reactor.core.Environment.cachedDispatcher;
+import static reactor.Environment.cachedDispatcher;
 
 @Configuration
 @ComponentScan
@@ -39,13 +39,13 @@ public class DemoApplication {
 	}
 
 	@Bean
-	public HotStream<Person> personStream() {
-		return Streams.defer(ENV);
+	public Broadcaster<Person> personStream() {
+		return new Broadcaster<>(cachedDispatcher(), 1);
 	}
 
 	@Bean
 	public Action<Chain> handlers(PersonRepository personRepo,
-	                              HotStream<Person> personStream,
+								  Broadcaster<Person> personStream,
 	                              ObjectMapper jsonMapper,
 	                              ModelMapper beanMapper) {
 		return (chain) -> {
@@ -58,7 +58,7 @@ public class DemoApplication {
 						.post(c -> c.render(Streams.just(c.parse(fromJson(Person.class)))
 						                           .dispatchOn(cachedDispatcher())
 						                           .<Person>map(personRepo::save)
-						                           .observe(personStream::broadcastNext)))
+						                           .observe(personStream::onNext)))
 
 						.put(c -> c.render(Streams.just(c.parse(fromJson(Person.class)))
 						                          .dispatchOn(cachedDispatcher())

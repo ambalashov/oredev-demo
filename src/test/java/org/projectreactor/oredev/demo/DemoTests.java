@@ -4,16 +4,24 @@ import org.junit.After;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.Environment;
-import reactor.core.Reactor;
-import reactor.core.spec.Reactors;
-import reactor.event.Event;
-import reactor.function.Predicate;
-import reactor.rx.Streams;
-import reactor.rx.stream.HotStream;
+import reactor.Environment;
+import reactor.bus.Event;
+import reactor.bus.EventBus;
+import reactor.fn.Predicate;
+import reactor.rx.stream.Broadcaster;
 
-import static reactor.event.selector.Selectors.$;
-import static reactor.event.selector.Selectors.U;
+import static reactor.bus.selector.Selectors.$;
+import static reactor.bus.selector.Selectors.U;
+
+//import reactor.core.Environment;
+//import reactor.core.Reactor;
+//import reactor.core.spec.Reactors;
+//import reactor.event.Event;
+//import reactor.function.Predicate;
+//import reactor.rx.stream.HotStream;
+//
+//import static reactor.event.selector.Selectors.$;
+//import static reactor.event.selector.Selectors.U;
 
 /**
  * @author Jon Brisbin
@@ -30,7 +38,7 @@ public class DemoTests {
 
 	@Test
 	public void reactorWithStringSelector() {
-		Reactor reactor = Reactors.reactor(ENV);
+		EventBus reactor = EventBus.create(ENV);
 
 		reactor.on($("topic.string"), (Event<String> ev) -> {
 			LOG.info("from consumer: {}", ev);
@@ -41,7 +49,7 @@ public class DemoTests {
 
 	@Test
 	public void reactorWithUriSelector() {
-		Reactor reactor = Reactors.reactor(ENV);
+		EventBus reactor = EventBus.create(ENV);
 
 		reactor.on(U("/first/{second}/third"), (Event<String> ev) -> {
 			LOG.info("from consumer: {}", ev);
@@ -53,7 +61,7 @@ public class DemoTests {
 
 	@Test
 	public void simpleHotStream() {
-		HotStream<String> str = Streams.defer(ENV);
+		Broadcaster<String> str = new Broadcaster<>(ENV.getCachedDispatcher(), 1);
 
 		str
 				.map(String::toUpperCase)
@@ -66,9 +74,9 @@ public class DemoTests {
 				.observeComplete(v -> LOG.info("complete()"))
 				.consume(s -> LOG.info("consumed string: {}", s));
 
-		str.broadcastNext("Hello World!");
-		str.broadcastNext("Goodbye World!");
-		str.broadcastComplete();
+		str.onNext("Hello World!");
+		str.onNext("Goodbye World!");
+		str.onComplete();
 	}
 
 }
